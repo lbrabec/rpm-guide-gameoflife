@@ -65,19 +65,28 @@ fn render_grid(frame: &mut Frame, grid: &[bool], width: usize, height: usize) {
     let area = frame.area();
     
     let mut content = String::new();
-    for row in 0..area.height as usize {
+    // Each terminal row displays 2 grid rows using half-block characters
+    for terminal_row in 0..area.height as usize {
+        let top_row = terminal_row * 2;
+        let bottom_row = terminal_row * 2 + 1;
+        
         for col in 0..area.width as usize {
-            if row < height && col < width {
-                if grid[pos(row, col, width)] {
-                    content.push('█'); // Full block for true
-                } else {
-                    content.push(' '); // Space for false
-                }
+            if col < width && bottom_row < height {
+                let top = grid[pos(top_row, col, width)];
+                let bottom = grid[pos(bottom_row, col, width)];
+                
+                let ch = match (top, bottom) {
+                    (true, true) => '█',   // Full block
+                    (true, false) => '▀',  // Upper half
+                    (false, true) => '▄',  // Lower half
+                    (false, false) => ' ', // Empty
+                };
+                content.push(ch);
             } else {
                 content.push(' ');
             }
         }
-        if row < area.height as usize - 1 {
+        if terminal_row < area.height as usize - 1 {
             content.push('\n');
         }
     }
@@ -93,9 +102,10 @@ fn main() -> io::Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
 
     // Get terminal size and create randomized flat array of bools
+    // Grid height is doubled for half-block rendering (2 grid rows per terminal row)
     let size = terminal.size()?;
     let width = size.width as usize;
-    let height = size.height as usize;
+    let height = size.height as usize * 2;
     let mut rng = rand::rng();
     let mut grid: Vec<bool> = (0..width * height).map(|_| rng.random_bool(0.5)).collect();
 
